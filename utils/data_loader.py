@@ -28,10 +28,8 @@ class CosmosDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        # Get sample dictionary
-        sample = self.data[idx]
-        # Load full image
-        img_path = os.path.join(self.img_dir, sample["img_local_path"])
+        example = self.data[idx]
+        img_path = os.path.join(self.img_dir, example["img_local_path"])
         try:
             image = Image.open(img_path).convert("RGB")
         except Exception as e:
@@ -39,21 +37,26 @@ class CosmosDataset(Dataset):
 
         if self.transform_full:
             image = self.transform_full(image)  # Tensor shape: (3, H, W)
-        # Retrieve bounding boxes; each box is [[x1, y1], [x2, y2]]
-        bboxes = sample.get("maskrcnn_bboxes", [])
-        if len(bboxes) == 0:
-            # If no box exists, use full image box.
-            _, H, W = image.shape
-            bboxes = [ [(0, 0), (W, H)] ]
-        # Use one of the caption variants (e.g., caption1_modified).
-        caption_match = sample.get("caption1_modified", "")
-        return {
-            "idx": idx,
-            "image": image,   # full image tensor (3, H, W)
-            "bboxes": bboxes[:10], # list of bounding boxes
-            "caption_match": caption_match
-        }
+            
+        bboxes = example.get("maskrcnn_bboxes", [])[:10]
+        _, H, W = image.shape
+        bboxes.append([0, 0, W, H])
+        bboxes = [torch.tensor(bbox) for bbox in bboxes]
+        img_captions = img_data['articles']
+        caption_match = img_captions[random.randint(0, len(img_captions) - 1)]['caption_modified']
         
+        caption_diff = ""
+        while True:
+            ridx = random.randint(0, len(self.data) - 1)
+            random_captions = self.data[ridx]['articles']
+            caption_diff = random_captions[random.randint(0, len(random_captions) - 1)]['caption_modified']
+            if caption_match != caption_diff:
+                break
+                
+        return image, bboxes, caption_match, caption_diff
+
+
+
 
 if __name__ == "__main__":
     dataset = CosmosDataset(json_file='data/cosmos_anns_acm/cosmos_anns_acm/acm_anns/train_data.json', img_dir="data/train")
