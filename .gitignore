@@ -1,0 +1,18 @@
+# Ignore the data folder
+data/
+
+# VS Code settings and workspace files
+.vscode/
+*.code-workspace
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Jupyter Notebook checkpoints (optional)
+.ipynb_checkpoints/
+
+# Mac system files (optional)
+.DS_Store
