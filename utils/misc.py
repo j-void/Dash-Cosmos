@@ -9,7 +9,7 @@ def get_scores(object_embeddings, match_embeddings, diff_embeddings):
 
     # Take the max over the K objects in each image
     match_scores = match_scores_all.max(dim=1).values  # [B]
-    diff_scores = rand_scores_all.max(dim=1).values    # [B]
+    diff_scores = diff_scores_all.max(dim=1).values    # [B]
     
     return match_scores, diff_scores
 

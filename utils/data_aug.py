@@ -1,7 +1,7 @@
 # File Source: https://github.com/Paperspace/DataAugmentationForObjectDetection/blob/master/data_aug/data_aug.py
 
 import random
-from utils.custom_transforms.bbox_util import *
+from utils.bbox_util import *
 
 
 class RandomHorizontalFlip(object):

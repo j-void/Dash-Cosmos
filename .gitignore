@@ -1,6 +1,10 @@
 # Ignore dirs
 data/
 checkpoints/
+runs/
+
+*.out
+*.err
 
 .vscode/
 *.code-workspace

@@ -4,7 +4,7 @@ import json
 import torch
 import torch.nn as nn
 import torchvision
-from torchvision.models.detection import maskrcnn_resnet50_fpn
+from torchvision.models.detection import maskrcnn_resnet50_fpn, MaskRCNN_ResNet50_FPN_Weights
 from torchvision.ops import roi_align
 import tensorflow as tf
 import tensorflow_hub as hub
@@ -16,7 +16,7 @@ class ObjectEncoder(nn.Module):
         # Using ResNet-50 feature extractor from Mask-RCNN
         self.embedding_dim = embedding_dim
         self.device = device
-        self.feature_extractor = maskrcnn_resnet50_fpn(pretrained=True).backbone
+        self.feature_extractor = maskrcnn_resnet50_fpn(weights=MaskRCNN_ResNet50_FPN_Weights.COCO_V1).backbone
         # Freeze weights
         for param in self.feature_extractor.parameters():
             param.requires_grad = False
@@ -36,11 +36,11 @@ class ObjectEncoder(nn.Module):
         # Prepare bboxes for roi_align
         bboxes = [torch.stack(b) for b in bboxes]
         roi_boxes = []
-        for batch_idx, boxes in enumerate(bboxes_list):
+        for batch_idx, boxes in enumerate(bboxes):
             batch_ids = torch.full((boxes.size(0), 1), batch_idx, dtype=boxes.dtype, device=boxes.device)
             roi_boxes.append(torch.cat([batch_ids, boxes], dim=1))
 
-        roi_boxes = torch.cat(roi_boxes, dim=0).to(self.device)  # (K, 5)
+        roi_boxes = torch.cat(roi_boxes, dim=0).to(self.device).float()  # (K, 5)
 
         # Step 3: Apply RoI Align
         roi_features = roi_align(feature_map, roi_boxes, output_size=(7, 7))
@@ -58,7 +58,7 @@ class ObjectEncoder(nn.Module):
 # Text Encoder: Processes captions using Universal Sentence Encoder
 class USE_TextEncoder(nn.Module):
     def __init__(self, embedding_dim, device):
-        super(TextEncoder, self).__init__()
+        super(USE_TextEncoder, self).__init__()
         # Additional layer after USE embedding
         self.embedding_dim = embedding_dim
         self.device = device
