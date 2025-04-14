@@ -103,6 +103,8 @@ if __name__=="__main__":
         num_workers=2
 	)
     
+    start_epoch = 0
+    
     model = CosmosFullModel(embedding_dim=EMBEDDING_DIM, device=DEVICE)
     model.to(DEVICE)
     optimizer = torch.optim.Adam(model.parameters(), LEARNING_RATE)
@@ -111,10 +113,21 @@ if __name__=="__main__":
     margin_rank_loss = torch.nn.MarginRankingLoss(margin=1)
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.8, patience=5, verbose=True)
     
+    checkpoint_path = os.path.join(save_dir, "maskrcnn_use_acc.torch")
+    if os.path.exists(checkpoint_path):
+        checkpoint = torch.load(checkpoint_path)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        
+        if scheduler and checkpoint['scheduler_state_dict']:
+            scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+
+        start_epoch = checkpoint['epoch'] + 1 
+    
     min_val_loss = math.inf
     max_val_acc = 0
     
-    for epoch in tqdm(range(NUM_EPOCHS), desc="Epochs: "):
+    for epoch in tqdm(range(start_epoch, NUM_EPOCHS), desc="Epochs: "):
         torch.cuda.empty_cache()
         model.train()
         count = 0
@@ -151,11 +164,11 @@ if __name__=="__main__":
         
         if min_val_loss > val_metrics["loss"]:
             min_val_loss = val_metrics["loss"]
-            torch.save(model.state_dict(), os.path.join(save_dir, "maskrcnn_use_loss.torch"))
+            misc.save_model(epoch, model, optimizer, scheduler, os.path.join(save_dir, "maskrcnn_use_loss.torch"))
             tqdm.write("Saving best loss model.....")
         
         if max_val_acc < val_metrics["accuracy"]:
             max_val_acc = val_metrics["accuracy"]
-            torch.save(model.state_dict(), os.path.join(save_dir, "maskrcnn_use_acc.torch"))
+            misc.save_model(epoch, model, optimizer, scheduler, os.path.join(save_dir, "maskrcnn_use_acc.torch"))
             tqdm.write("Saving best accuracy model.....")
     

@@ -20,3 +20,11 @@ def compute_matches(match_scores, diff_scores):
     correct = predictions.sum().item()
     total = predictions.size(0)
     return correct, total
+
+def save_model(epoch, model, optimizer, scheduler, path):
+    torch.save({
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'scheduler_state_dict': scheduler.state_dict() if scheduler else None,
+    }, path)
