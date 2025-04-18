@@ -89,3 +89,14 @@ def is_bbox_overlap(bbox1, bbox2, iou_overlap_threshold):
     if iou >= iou_overlap_threshold:
         return True
     return False
+
+def compute_accuracy_cl(anchor, positive, negative):
+    # Calculate distances
+    pos_dist = torch.norm(anchor - positive, dim=1)
+    neg_dist = torch.norm(anchor - negative, dim=1)
+    
+    # Determine correct predictions
+    correct = (pos_dist < neg_dist).sum().item()
+    total = anchor.size(0)
+    
+    return correct, total

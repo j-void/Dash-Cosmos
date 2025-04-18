@@ -30,7 +30,7 @@ class ObjectEncoder(nn.Module):
         # Extract features from backbone
         features = self.feature_extractor(torch.stack(images).to(self.device))
         
-        # Get the feature map (assumes 'features' is a dictionary with 0-4 keys)
+        # Get the feature map
         feature_map = features["0"]  # Use the highest resolution feature map
         
         # Prepare bboxes for roi_align
@@ -65,11 +65,11 @@ class USE_TextEncoder(nn.Module):
         self.fc = nn.Linear(512, embedding_dim)
         self.relu = nn.ReLU()
         
-        # Load Universal Sentence Encoder (this is TensorFlow-based)
+        # Load Universal Sentence Encoder
         self.use_module = hub.load("https://tfhub.dev/google/universal-sentence-encoder/4")
         
     def forward(self, captions):
-        # Get embeddings from USE (converts from TF to PyTorch)
+        # Get embeddings from USE 
         with torch.no_grad():
             use_embeddings = self.use_module(captions).numpy()
             use_embeddings = torch.tensor(use_embeddings, device=self.device)
