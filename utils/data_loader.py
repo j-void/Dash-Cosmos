@@ -13,7 +13,7 @@ from utils.data_aug import Resize
 import cv2
 
 class CosmosDataset(Dataset):
-    def __init__(self, json_file, img_dir, transform_full=None):
+    def __init__(self, json_file, img_dir, transform_full=None, size=512):
         """
         Args:
             json_file (str): Path to the JSON file with samples.
@@ -27,7 +27,7 @@ class CosmosDataset(Dataset):
         # self.data = self.data[:10000]
         self.img_dir = img_dir
         self.transform_full = transform_full
-        self.resize = Resize(512)
+        self.resize = Resize(size)
 
     def __len__(self):
         return len(self.data)
@@ -63,7 +63,7 @@ class CosmosDataset(Dataset):
         return image.float(), bboxes, caption_match, caption_diff
 
 class CosmosTestDataset(Dataset):
-    def __init__(self, json_file, img_dir, transform_full=None):
+    def __init__(self, json_file, img_dir, transform_full=None, size=512):
         """
         Args:
             json_file (str): Path to the JSON file with samples.
@@ -77,7 +77,7 @@ class CosmosTestDataset(Dataset):
 
         self.img_dir = img_dir
         self.transform_full = transform_full
-        self.resize = Resize(512)
+        self.resize = Resize(size)
 
     def __len__(self):
         return len(self.data)

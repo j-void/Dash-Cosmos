@@ -98,7 +98,7 @@ if __name__=="__main__":
     collate_fn = get_collate_fn(tokenizer)
     
     train_dataset = CosmosDataset(json_file="data/cosmos_anns_acm/cosmos_anns_acm/acm_anns/train_data.json", \
-        img_dir="data", transform_full=transform_full)
+        img_dir="data", transform_full=transform_full, size=224)
     
     train_loader = DataLoader(
         train_dataset,
@@ -109,7 +109,7 @@ if __name__=="__main__":
 	)
     
     val_dataset = CosmosDataset(json_file="data/cosmos_anns_acm/cosmos_anns_acm/acm_anns/val_data.json", \
-        img_dir="data", transform_full=transform_full)
+        img_dir="data", transform_full=transform_full, size=224)
     
     val_loader = DataLoader(
         val_dataset,
