@@ -102,8 +102,9 @@ class CosmosTestDataset(Dataset):
         caption1 = example['caption1_modified']
         caption2 = example['caption2_modified']
         
-        label = torch.tensor(example['context_label']).long()
-        bert_score = torch.tensor(example['bert_base_score']).float()
+        label = torch.tensor(example['context_label']).long()        
+        bert_score = float(example['bert_base_score'])
+        bert_score = torch.tensor(bert_score).float()
 
         return image.float(), bboxes, caption1, caption2, label, bert_score
 

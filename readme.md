@@ -11,10 +11,10 @@ pip install -r requirements.txt
 
 ## Log
 - [x] **Baseline COSMOS implementation** (Week 1)  
-  Code for training and validation implemented. Training is still in progress.
+  Code for training and validation implemented. 
 
 - [x] **COSMOS testing** (Week 1)
-  Code for testing completed.
+  Code for testing completed. (Test Metrics: Accuracy = 0.768, F1 Score = 0.782, Average Precision = 0.697)
 
 - [x] **OOCBasic Model implementation: ViT + SBERT + Cross-Attention + Triplet Loss** (Week 2)  
     Code for training and validation implemented.
