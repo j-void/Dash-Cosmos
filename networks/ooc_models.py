@@ -6,6 +6,8 @@ from torchvision import transforms
 from timm import create_model
 import random
 import os
+from transformers import AutoTokenizer, AutoModel
+
 
 class ImageEncoder(nn.Module):
     """
@@ -13,7 +15,7 @@ class ImageEncoder(nn.Module):
     """
     def __init__(self, model_name="vit_base_patch16_224", pretrained=True):
         super().__init__()
-        self.vit = create_model(model_name, pretrained=pretrained)
+        self.vit = create_model(model_name, pretrained=pretrained, num_classes=0)
         self.vit.head = nn.Identity()  # Remove classification head
         for param in self.vit.parameters():
             param.requires_grad = False

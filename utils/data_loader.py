@@ -24,7 +24,7 @@ class CosmosDataset(Dataset):
         with open(json_file, 'r') as f:
             for line in f:
                 self.data.append(json.loads(line))
-        # self.data = self.data[:10000]
+        # self.data = self.data[:len(self.data)//10]
         self.img_dir = img_dir
         self.transform_full = transform_full
         self.resize = Resize(size)

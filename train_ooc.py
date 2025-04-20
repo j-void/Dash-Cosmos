@@ -1,5 +1,6 @@
 
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import json
 import torch
 import torch.optim as optim
@@ -41,6 +42,9 @@ def run_eval(model, dataloader, loss_fn):
     count = 0
     with torch.no_grad():
         for image, caption_match, caption_diff in tqdm(dataloader, desc="Val Batch:"):
+            image = image.to(DEVICE)
+            caption_match = caption_match.to(DEVICE)
+            caption_diff = caption_diff.to(DEVICE)
             object_embeddings, match_embeddings, diff_embeddings = model(image, caption_match, caption_diff)
             
             # Compute distances
@@ -57,7 +61,7 @@ def run_eval(model, dataloader, loss_fn):
             # Loss (assumes margin ranking loss)
             loss = loss_fn(object_embeddings, match_embeddings, diff_embeddings)
             total_loss += loss.item()
-            count += match_scores.size(0)
+            count += object_embeddings.size(0)
 
     # Convert to numpy arrays
     all_preds = np.array(all_preds)
@@ -128,7 +132,7 @@ if __name__=="__main__":
     optimizer.zero_grad()
     
     margin_rank_loss = torch.nn.MarginRankingLoss(margin=1)
-    triplet_loss  = nn.TripletMarginLoss(margin=0.2)
+    triplet_loss  = torch.nn.TripletMarginLoss(margin=0.2)
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.8, patience=5, verbose=True)
     
     checkpoint_path = os.path.join(save_dir, "ooc_acc.torch")
@@ -152,8 +156,11 @@ if __name__=="__main__":
         total_loss = 0
         correct = 0
         for idx, batch in enumerate((tqdm(train_loader, desc="Train Batch: "))):
-            image, caption_match, caption_diff = batch
             optimizer.zero_grad()
+            image, caption_match, caption_diff = batch
+            image = image.to(DEVICE)
+            caption_match = caption_match.to(DEVICE)
+            caption_diff = caption_diff.to(DEVICE)
             object_embeddings, match_embeddings, diff_embeddings = model(image, caption_match, caption_diff)
             
             loss = triplet_loss(object_embeddings, match_embeddings, diff_embeddings)
@@ -161,7 +168,7 @@ if __name__=="__main__":
             loss.backward()
             optimizer.step()
             
-            train_eval = misc.compute_accuracy_cl(match_scores, diff_scores)
+            train_eval = misc.compute_accuracy_cl(object_embeddings, match_embeddings, diff_embeddings)
             correct += train_eval[0]
             count += train_eval[1]
             total_loss += loss.item()
