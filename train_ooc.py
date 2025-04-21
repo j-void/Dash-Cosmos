@@ -40,6 +40,8 @@ def run_eval(model, dataloader, loss_fn):
     all_labels = []
     total_loss = 0
     count = 0
+    total_match_distance = 0.0
+    total_diff_distance = 0.0
     with torch.no_grad():
         for image, caption_match, caption_diff in tqdm(dataloader, desc="Val Batch:"):
             image = image.to(DEVICE)
@@ -50,6 +52,8 @@ def run_eval(model, dataloader, loss_fn):
             # Compute distances
             match_distances = torch.norm(object_embeddings - match_embeddings, dim=1)
             diff_distances = torch.norm(object_embeddings - diff_embeddings, dim=1)
+            total_match_distance += match_distances.sum().item()
+            total_diff_distance += diff_distances.sum().item()
             
             # 1 if match is closer than diff, else 0
             preds = (match_distances < diff_distances).int().cpu().numpy()
@@ -71,12 +75,17 @@ def run_eval(model, dataloader, loss_fn):
     accuracy = accuracy_score(all_labels, all_preds)
     f1 = f1_score(all_labels, all_preds)
     ap = average_precision_score(all_labels, all_preds)
+    
+    avg_match_distance = total_match_distance / count
+    avg_diff_distance = total_diff_distance / count
 
     return {
         "accuracy": accuracy,
         "f1_score": f1,
         "average_precision": ap,
-        "loss": total_loss / len(dataloader)
+        "loss": total_loss / len(dataloader),
+        "avg_match_distance": avg_match_distance,
+        "avg_diff_distance": avg_diff_distance
     }
 
 if __name__=="__main__":
@@ -177,12 +186,12 @@ if __name__=="__main__":
         
         train_acc = correct/count
         train_loss = total_loss/len(train_loader)
-        val_metrics = run_eval(model, val_loader, margin_rank_loss)
+        val_metrics = run_eval(model, val_loader, triplet_loss)
         writer.add_scalars("Loss", {'val':val_metrics["loss"], 'train': train_loss}, epoch)
         writer.add_scalars("Accuracy", {'val':val_metrics["accuracy"], 'train': train_acc}, epoch)
         writer.add_scalar("Val-F1", val_metrics["f1_score"], epoch)
         writer.add_scalar("Val-AP", val_metrics["average_precision"], epoch)
-        tqdm.write(f'Epoch {epoch}: Loss-> (train={train_loss:.4f}, val={val_metrics["loss"]:.4f}) | Acc-> (train={train_acc}, val={val_metrics["accuracy"]}))')
+        tqdm.write(f'Epoch {epoch}: Loss-> (train={train_loss:.4f}, val={val_metrics["loss"]:.4f}) | Acc-> (train={train_acc:.4f}, val={val_metrics["accuracy"]:.4f})')
         
         scheduler.step(val_metrics["loss"])
         
@@ -190,9 +199,11 @@ if __name__=="__main__":
             min_val_loss = val_metrics["loss"]
             misc.save_model(epoch, model, optimizer, scheduler, os.path.join(save_dir, "ooc_loss.torch"))
             tqdm.write("Saving best loss model.....")
+            # tqdm.write(f'Avg dist -> (match={val_metrics["avg_match_distance"]:.4f}, diff={val_metrics["avg_diff_distance"]:.4f})')
         
         if max_val_acc < val_metrics["accuracy"]:
             max_val_acc = val_metrics["accuracy"]
             misc.save_model(epoch, model, optimizer, scheduler, os.path.join(save_dir, "ooc_acc.torch"))
             tqdm.write("Saving best accuracy model.....")
+            tqdm.write(f'Avg dist -> (match={val_metrics["avg_match_distance"]:.4f}, diff={val_metrics["avg_diff_distance"]:.4f})')
     

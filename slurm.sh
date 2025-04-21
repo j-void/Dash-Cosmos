@@ -1,13 +1,13 @@
 #!/bin/bash
 
-#SBATCH --time=24:00:00 # walltime
+#SBATCH --time=70:00:00 # walltime
 #SBATCH --nodes=1
 #SBATCH --ntasks=4
-#SBATCH --account=kingspeak-gpu
-#SBATCH --partition=kingspeak-gpu
-#SBATCH --gres=gpu:titanx:1
-#SBATCH -o slurm_log.out # Standard output 
-#SBATCH -e slurm_log.err # Standard error
+#SBATCH --account=lonepeak-gpu
+#SBATCH --partition=lonepeak-gpu
+#SBATCH --gres=gpu:1080ti:1
+#SBATCH -o runs/ooc_basic_vit_base.out # Standard output 
+#SBATCH -e runs/ooc_basic_vit_base.err # Standard error
 
 
-~/miniconda3/envs/dash/bin/python train.py
+~/miniconda3/envs/dash/bin/python train_ooc.py
