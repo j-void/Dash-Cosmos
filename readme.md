@@ -19,8 +19,8 @@ pip install -r requirements.txt
 - [x] **OOCBasic Model implementation: ViT + SBERT + Cross-Attention + Triplet Loss** (Week 2)  
     Code for training and validation implemented.
 
-- [ ] **OOCBasic testing** (Week 2)  
-    In progress.
+- [x] **OOCBasic testing** (Week 2)  
+    (Test Metrics: Accuracy = 0.745, F1 Score = 0.769, Average Precision = 0.671)
 
 ## Upcoming Tasks
 
