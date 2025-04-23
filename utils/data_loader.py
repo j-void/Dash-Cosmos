@@ -106,7 +106,7 @@ class CosmosTestDataset(Dataset):
         bert_score = float(example['bert_base_score'])
         bert_score = torch.tensor(bert_score).float()
 
-        return image.float(), bboxes, caption1, caption2, label, bert_score
+        return image.float(), bboxes, caption1, caption2, label, bert_score, example['caption1'], example['caption2']
 
 
 if __name__ == "__main__":
