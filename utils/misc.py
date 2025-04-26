@@ -2,6 +2,14 @@
 import os
 import torch
 import numpy as np
+import spacy
+from functools import partial
+
+spacy.require_gpu() 
+if not spacy.util.is_package("en_core_web_sm"):
+    spacy.cli.download("en_core_web_sm")
+
+nlp = spacy.load("en_core_web_sm", disable=["tagger","parser","attribute_ruler","lemmatizer"])
 
 def get_scores(object_embeddings, match_embeddings, diff_embeddings):
     match_scores_all = torch.einsum("bkd,bd->bk", object_embeddings, match_embeddings)
@@ -30,33 +38,12 @@ def save_model(epoch, model, optimizer, scheduler, path):
     }, path)
     
 def top_bbox_from_scores(bboxes, scores):
-    """
-        Returns the top matching bounding box based on scores
-
-        Args:
-            bboxes (list): List of bounding boxes for each object
-            scores (list): List of scores corresponding to bounding boxes given by bboxes
-
-        Returns:
-            matched_bbox: The bounding box with the maximum score
-    """
     bbox_scores = [(bbox, score) for bbox, score in zip(bboxes, scores)]
     sorted_bbox_scores = sorted(bbox_scores, key=lambda x: x[1], reverse=True)
     matched_bbox = sorted_bbox_scores[0][0]
     return matched_bbox
 
 def bb_intersection_over_union(boxA, boxB):
-    """
-        Computes IoU (Intersection over Union for 2 given bounding boxes)
-
-        Args:
-            boxA (list): A list of 4 elements holding bounding box coordinates (x1, y1, x2, y2)
-            boxB (list): A list of 4 elements holding bounding box coordinates (x1, y1, x2, y2)
-
-        Returns:
-            iou (float): Overlap between 2 bounding boxes in terms of overlap
-    """
-
     # determine the (x, y)-coordinates of the intersection rectangle
     xA = max(boxA[0], boxB[0])
     yA = max(boxA[1], boxB[1])
@@ -74,17 +61,6 @@ def bb_intersection_over_union(boxA, boxB):
     return iou
 
 def is_bbox_overlap(bbox1, bbox2, iou_overlap_threshold):
-    """
-        Checks if the two bounding boxes overlap based on certain threshold
-
-        Args:
-            bbox1: The coordinates of first bounding box
-            bbox2: The coordinates of second bounding box
-            iou_overlap_threshold: Threshold value beyond which objects are considered overlapping
-
-        Returns:
-            Boolean whether two boxes overlap or not
-    """
     iou = bb_intersection_over_union(boxA=bbox1, boxB=bbox2)
     if iou >= iou_overlap_threshold:
         return True
@@ -100,3 +76,26 @@ def compute_accuracy_cl(anchor, positive, negative):
     total = anchor.size(0)
     
     return correct, total
+
+def modify_caption_replace_entities(caption_text):
+
+    doc = nlp(caption_text)
+    caption_modified = caption_text
+    caption_entity_list = []
+    for ent in doc.ents:
+        caption_entity_list.append((ent.text, ent.label_))
+        caption_modified = caption_modified.replace(ent.text, ent.label_, 1)
+    return caption_modified
+
+
+pipe_cfg = {"batch_size": 256, "n_process": 1, 
+            "disable": ["tagger", "parser", "attribute_ruler", "lemmatizer"]}
+
+def batch_replace_entities(texts):
+    out_texts = []
+    for doc in nlp.pipe(texts, **pipe_cfg):
+        text = doc.text
+        for ent in doc.ents:
+            text = text.replace(ent.text, ent.label_, 1)
+        out_texts.append(text)
+    return out_texts

@@ -22,6 +22,9 @@ pip install -r requirements.txt
 - [x] **OOCBasic testing** (Week 2)  
     (Test Metrics: Accuracy = 0.745, F1 Score = 0.769, Average Precision = 0.671)
 
+- [x] **Synthetic different generator** (Week 3)
+  Code implemented. Traning in progress.
+
 ## Upcoming Tasks
 
 - [ ] **Grounding to provide better context for OOC**  

@@ -16,3 +16,5 @@ __pycache__/
 
 .ipynb_checkpoints/
 .DS_Store
+
+exp.py

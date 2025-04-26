@@ -1,6 +1,7 @@
 
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 import json
 import torch
 import torch.optim as optim
@@ -16,25 +17,47 @@ from torch.utils.tensorboard import SummaryWriter
 import math
 from sklearn.metrics import accuracy_score, f1_score, average_precision_score
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, BatchEncoding
 
-def get_collate_fn(tokenizer):
-    def collate_fn(batch):
-        images, bboxes, caption_match, caption_diff = zip(*batch)
 
-        images = torch.stack(images, dim=0)
-        
-        pos_tokens = tokenizer(
-            caption_match, return_tensors='pt', padding=True, truncation=True, max_length=32
-        )
-        neg_tokens = tokenizer(
-            caption_diff, return_tensors='pt', padding=True, truncation=True, max_length=32
-        )
+def collate_fn(batch):
+    images, bboxes, caption_match, caption_diff, caption_match_orig = zip(*batch)
+    return list(images), list(caption_match), list(caption_diff), list(caption_match_orig)
 
-        return images, pos_tokens, neg_tokens
-    return collate_fn
 
-def run_eval(model, dataloader, loss_fn):
+def get_caption_tokens(caption_match, caption_diff, caption_orig, tokenizer, augmenter, synthetic_prob):
+    n = len(caption_match)
+    synth_mask = np.random.rand(n) < synthetic_prob
+
+    new_diffs = list(caption_diff)
+
+    idxs = np.nonzero(synth_mask)[0].tolist()
+    if idxs:
+        to_aug = [caption_orig[i] for i in idxs]
+        raw_ctx = augmenter.context_aug.augment(to_aug)
+        ctx_aug = [c[0] if isinstance(c, list) else c for c in raw_ctx]
+
+        raw_ant = augmenter.antonym_aug.augment(ctx_aug)
+        ant_aug = [a[0] if isinstance(a, list) else a for a in raw_ant]
+
+        new_texts = misc.batch_replace_entities(ant_aug)
+        for i, aug in zip(idxs, new_texts):
+            new_diffs[i] = aug
+
+    ## speed up
+    # all_texts = caption_match + new_diffs
+    # batch_text = tokenizer(all_texts, return_tensors="pt", padding=True, truncation=True, max_length=32)
+    # bs = len(caption_match)
+    # pos_tokens = BatchEncoding({k: v[:bs] for k, v in batch_text.items()})
+    # neg_tokens = BatchEncoding({k: v[bs:] for k, v in batch_text.items()})
+
+    pos_tokens = tokenizer(caption_match, return_tensors='pt', padding=True, truncation=True, max_length=32)
+    neg_tokens = tokenizer(new_diffs, return_tensors='pt', padding=True, truncation=True, max_length=32)
+
+    return pos_tokens, neg_tokens
+
+
+def run_eval(model, dataloader, loss_fn, tokenizer, augmenter):
     model.eval()
     all_preds = []
     all_labels = []
@@ -43,8 +66,10 @@ def run_eval(model, dataloader, loss_fn):
     total_match_distance = 0.0
     total_diff_distance = 0.0
     with torch.no_grad():
-        for image, caption_match, caption_diff in tqdm(dataloader, desc="Val Batch:"):
-            image = image.to(DEVICE)
+        for batch in tqdm(dataloader, desc="Val Batch:"):
+            image, caption_match, caption_diff, caption_match_orig = batch
+            image = torch.stack(image, dim=0).to(DEVICE)
+            caption_match, caption_diff = get_caption_tokens(caption_match, caption_diff, caption_match_orig, tokenizer, augmenter, 0.8)
             caption_match = caption_match.to(DEVICE)
             caption_diff = caption_diff.to(DEVICE)
             object_embeddings, match_embeddings, diff_embeddings = model(image, caption_match, caption_diff)
@@ -89,12 +114,13 @@ def run_eval(model, dataloader, loss_fn):
     }
 
 if __name__=="__main__":
+    
     ## define config 
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     BATCH_SIZE = 32
     LEARNING_RATE = 5e-4
     NUM_EPOCHS = 100
-    CHECKPOINT_DIR = "checkpoints/ooc_basic"
+    CHECKPOINT_DIR = "checkpoints/ooc_basic_synth"
     
     save_dir = os.path.join(CHECKPOINT_DIR, "save")
     os.makedirs(save_dir, exist_ok=True)
@@ -107,10 +133,10 @@ if __name__=="__main__":
                                 std=[0.229, 0.224, 0.225])
         ])    
     
-    tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-mpnet-base-v2")
-    collate_fn = get_collate_fn(tokenizer)
+    augmenter = SyntheticNegatives()
+    tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-mpnet-base-v2", use_fast=True)
     
-    train_dataset = CosmosDataset(json_file="data/cosmos_anns_acm/cosmos_anns_acm/acm_anns/train_data.json", \
+    train_dataset = CosmosDataset_Syth(json_file="data/cosmos_anns_acm/cosmos_anns_acm/acm_anns/train_data.json", \
         img_dir="data", transform_full=transform_full, size=224)
     
     train_loader = DataLoader(
@@ -118,10 +144,10 @@ if __name__=="__main__":
         batch_size=BATCH_SIZE,
         shuffle=True,
         collate_fn=collate_fn,
-        num_workers=2
+        num_workers=8
 	)
     
-    val_dataset = CosmosDataset(json_file="data/cosmos_anns_acm/cosmos_anns_acm/acm_anns/val_data.json", \
+    val_dataset = CosmosDataset_Syth(json_file="data/cosmos_anns_acm/cosmos_anns_acm/acm_anns/val_data.json", \
         img_dir="data", transform_full=transform_full, size=224)
     
     val_loader = DataLoader(
@@ -129,7 +155,7 @@ if __name__=="__main__":
         batch_size=BATCH_SIZE,
         shuffle=False,
         collate_fn=collate_fn,
-        num_workers=2
+        num_workers=8
 	)
     
     start_epoch = 0
@@ -166,8 +192,9 @@ if __name__=="__main__":
         correct = 0
         for idx, batch in enumerate((tqdm(train_loader, desc="Train Batch: "))):
             optimizer.zero_grad()
-            image, caption_match, caption_diff = batch
-            image = image.to(DEVICE)
+            image, caption_match, caption_diff, caption_match_orig = batch
+            image = torch.stack(image, dim=0).to(DEVICE)
+            caption_match, caption_diff = get_caption_tokens(caption_match, caption_diff, caption_match_orig, tokenizer, augmenter, 0.8)
             caption_match = caption_match.to(DEVICE)
             caption_diff = caption_diff.to(DEVICE)
             object_embeddings, match_embeddings, diff_embeddings = model(image, caption_match, caption_diff)
@@ -186,7 +213,7 @@ if __name__=="__main__":
         
         train_acc = correct/count
         train_loss = total_loss/len(train_loader)
-        val_metrics = run_eval(model, val_loader, triplet_loss)
+        val_metrics = run_eval(model, val_loader, triplet_loss, tokenizer, augmenter)
         writer.add_scalars("Loss", {'val':val_metrics["loss"], 'train': train_loss}, epoch)
         writer.add_scalars("Accuracy", {'val':val_metrics["accuracy"], 'train': train_acc}, epoch)
         writer.add_scalar("Val-F1", val_metrics["f1_score"], epoch)
@@ -205,5 +232,5 @@ if __name__=="__main__":
             max_val_acc = val_metrics["accuracy"]
             misc.save_model(epoch, model, optimizer, scheduler, os.path.join(save_dir, "ooc_acc.torch"))
             tqdm.write("Saving best accuracy model.....")
-            tqdm.write(f'Avg dist -> (match={val_metrics["avg_match_distance"]:.4f}, diff={val_metrics["avg_diff_distance"]:.4f})')
+            # tqdm.write(f'Avg dist -> (match={val_metrics["avg_match_distance"]:.4f}, diff={val_metrics["avg_diff_distance"]:.4f})')
     
