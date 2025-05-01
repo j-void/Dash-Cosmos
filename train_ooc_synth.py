@@ -1,7 +1,7 @@
 
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import json
 import torch
 import torch.optim as optim
@@ -99,7 +99,7 @@ def run_eval(model, dataloader, loss_fn, tokenizer, augmenter):
     # Compute metrics
     accuracy = accuracy_score(all_labels, all_preds)
     f1 = f1_score(all_labels, all_preds)
-    ap = average_precision_score(all_labels, all_preds)
+    ap = 0#average_precision_score(all_labels, all_preds)
     
     avg_match_distance = total_match_distance / count
     avg_diff_distance = total_diff_distance / count
@@ -144,8 +144,8 @@ if __name__=="__main__":
         batch_size=BATCH_SIZE,
         shuffle=True,
         collate_fn=collate_fn,
-        num_workers=8
-	)
+        num_workers=4
+    )
     
     val_dataset = CosmosDataset_Syth(json_file="data/cosmos_anns_acm/cosmos_anns_acm/acm_anns/val_data.json", \
         img_dir="data", transform_full=transform_full, size=224)
@@ -155,7 +155,7 @@ if __name__=="__main__":
         batch_size=BATCH_SIZE,
         shuffle=False,
         collate_fn=collate_fn,
-        num_workers=8
+        num_workers=4
 	)
     
     start_epoch = 0

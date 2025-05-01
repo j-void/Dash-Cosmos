@@ -5,7 +5,7 @@ import numpy as np
 import spacy
 from functools import partial
 
-spacy.require_gpu() 
+# spacy.require_gpu() 
 if not spacy.util.is_package("en_core_web_sm"):
     spacy.cli.download("en_core_web_sm")
 
@@ -88,7 +88,7 @@ def modify_caption_replace_entities(caption_text):
     return caption_modified
 
 
-pipe_cfg = {"batch_size": 256, "n_process": 1, 
+pipe_cfg = {"batch_size": 32, "n_process": 8, 
             "disable": ["tagger", "parser", "attribute_ruler", "lemmatizer"]}
 
 def batch_replace_entities(texts):
