@@ -1,6 +1,6 @@
 # Cheapfake Detection Using Image-Caption Triplets
 
-## Instalation
+## Installation
 ```
 conda create -n dash python=3.10
 conda activate dash
@@ -47,7 +47,10 @@ data/
 - **OOCBasic_Synth:** `python train_ooc_synth.py`
   
 ## Checkpoints and Testing
-Saved corresponding best loss and accuracy models for validation in the following structure:
+
+Checkpoints can be downloaded from [here](https://drive.google.com/drive/folders/1oWq5Z_B07YoEVzd36vWYsr-u5yOI1-b0?usp=share_link).
+
+The corresponding best loss and accuracy models on validation set have been provided:
 ```
 checkpoints/
 ├── cosmos
@@ -62,6 +65,25 @@ checkpoints/
 │   └── save
 │       ├── ooc_acc.torch
 │       └── ooc_loss.torch
+```
+
+The final file structure should look like this - 
+```
+├── checkpoints
+│   ├── cosmos
+│   │   └── save
+│   ├── ooc_basic
+│   │   └── save
+│   └── ooc_basic_synth
+├── data
+│   ├── cosmos_anns_acm
+│   │   └── cosmos_anns_acm
+│   │       └── acm_anns
+│   ├── test
+│   ├── train
+│   └── val
+├── networks
+└── utils
 ```
 
 **Testing:** Open and run `test.ipynb` in Jupyter Notebook.
