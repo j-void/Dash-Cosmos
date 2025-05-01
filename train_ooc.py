@@ -74,7 +74,7 @@ def run_eval(model, dataloader, loss_fn):
     # Compute metrics
     accuracy = accuracy_score(all_labels, all_preds)
     f1 = f1_score(all_labels, all_preds)
-    ap = average_precision_score(all_labels, all_preds)
+    ap = 0#average_precision_score(all_labels, all_preds)
     
     avg_match_distance = total_match_distance / count
     avg_diff_distance = total_diff_distance / count
